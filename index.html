@@ -1549,7 +1549,8 @@
         <div class="container welcome-container">
         <!-- Welcome Page -->
         <div id="welcome-page" class="page">
-            <div class="header">
+            <div class="header" style="position:relative;">
+                <button onclick="openReminderSettings()" style="position:absolute;right:0;top:0;background:none;border:none;font-size:22px;cursor:pointer;padding:8px;color:#999;">⚙️</button>
                 <h1>Articulator</h1>
                 <p>Structure your thoughts. Speak it. Write it.</p>
             </div>
@@ -6202,8 +6203,105 @@ ${jsonText}
             color: #ccc;
         }
     </style>
+<!-- Reminder Settings Modal -->
+<div id="reminder-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <div class="modal-logo">🔔</div>
+      <h2 class="modal-title">練習提醒</h2>
+      <p class="modal-subtitle">選擇提醒的日子和時間</p>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px;">
+        <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid #e5e5e5;border-radius:8px;cursor:pointer;font-size:14px;user-select:none;">
+          <input type="checkbox" class="reminder-day" value="1"> 一
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid #e5e5e5;border-radius:8px;cursor:pointer;font-size:14px;user-select:none;">
+          <input type="checkbox" class="reminder-day" value="2" checked> 二
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid #e5e5e5;border-radius:8px;cursor:pointer;font-size:14px;user-select:none;">
+          <input type="checkbox" class="reminder-day" value="3"> 三
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid #e5e5e5;border-radius:8px;cursor:pointer;font-size:14px;user-select:none;">
+          <input type="checkbox" class="reminder-day" value="4" checked> 四
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid #e5e5e5;border-radius:8px;cursor:pointer;font-size:14px;user-select:none;">
+          <input type="checkbox" class="reminder-day" value="5"> 五
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid #e5e5e5;border-radius:8px;cursor:pointer;font-size:14px;user-select:none;">
+          <input type="checkbox" class="reminder-day" value="6"> 六
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid #e5e5e5;border-radius:8px;cursor:pointer;font-size:14px;user-select:none;">
+          <input type="checkbox" class="reminder-day" value="0"> 日
+        </label>
+      </div>
+      <div style="margin-bottom:24px;">
+        <label style="font-size:14px;color:#666;display:block;margin-bottom:8px;">提醒時間</label>
+        <input type="time" id="reminder-time" value="12:00" style="width:100%;padding:12px;font-size:16px;border:1px solid #e5e5e5;border-radius:8px;font-family:inherit;">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="saveReminderSettings()" class="btn-primary" style="flex:1;">儲存</button>
+        <button onclick="closeReminderSettings()" style="flex:1;padding:16px;font-size:16px;background:#f5f5f5;border:1px solid #e5e5e5;border-radius:8px;cursor:pointer;">取消</button>
+      </div>
+      <p id="reminder-status" style="text-align:center;font-size:13px;color:#999;margin-top:16px;"></p>
+    </div>
+  </div>
+</div>
+
 <script>
-// === PWA + Tue/Thu 12:00 PM Reminder ===
+// === PWA + Configurable Reminders ===
+const REMINDER_KEY = 'articulator_reminder_settings';
+
+const defaultSettings = { days: [2, 4], hour: 12, minute: 0 };
+
+function getReminderSettings() {
+  try {
+    const saved = localStorage.getItem(REMINDER_KEY);
+    return saved ? JSON.parse(saved) : defaultSettings;
+  } catch { return defaultSettings; }
+}
+
+function openReminderSettings() {
+  const s = getReminderSettings();
+  document.querySelectorAll('.reminder-day').forEach(cb => {
+    cb.checked = s.days.includes(parseInt(cb.value));
+  });
+  const h = String(s.hour).padStart(2, '0');
+  const m = String(s.minute).padStart(2, '0');
+  document.getElementById('reminder-time').value = h + ':' + m;
+  document.getElementById('reminder-status').textContent = '';
+  document.getElementById('reminder-modal').classList.remove('hidden');
+}
+
+function closeReminderSettings() {
+  document.getElementById('reminder-modal').classList.add('hidden');
+}
+
+function saveReminderSettings() {
+  const days = [];
+  document.querySelectorAll('.reminder-day:checked').forEach(cb => {
+    days.push(parseInt(cb.value));
+  });
+  const timeParts = document.getElementById('reminder-time').value.split(':');
+  const settings = {
+    days: days,
+    hour: parseInt(timeParts[0]),
+    minute: parseInt(timeParts[1])
+  };
+  localStorage.setItem(REMINDER_KEY, JSON.stringify(settings));
+
+  // Re-schedule with new settings
+  navigator.serviceWorker.ready.then(reg => scheduleReminders(reg));
+
+  const dayNames = ['日','一','二','三','四','五','六'];
+  const dayStr = settings.days.map(d => '週' + dayNames[d]).join('、');
+  const timeStr = String(settings.hour).padStart(2,'0') + ':' + String(settings.minute).padStart(2,'0');
+  document.getElementById('reminder-status').textContent = '已設定：' + dayStr + ' ' + timeStr;
+
+  setTimeout(() => closeReminderSettings(), 1200);
+}
+
+// Service Worker registration
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').then(reg => {
     console.log('SW registered');
@@ -6211,6 +6309,7 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// Request notification permission on first tap
 let notifPermissionRequested = false;
 document.addEventListener('click', function() {
   if (notifPermissionRequested) return;
@@ -6227,8 +6326,11 @@ document.addEventListener('click', function() {
 
 function scheduleReminders(reg) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const s = getReminderSettings();
+  if (!s.days.length) return;
+
   const now = new Date();
-  const targets = getNextReminderTimes(now, 4);
+  const targets = getNextReminderTimes(now, 4, s.days, s.hour, s.minute);
   targets.forEach(target => {
     const delay = target.getTime() - now.getTime();
     if (delay > 0 && reg.active) {
@@ -6243,15 +6345,14 @@ function scheduleReminders(reg) {
   });
 }
 
-function getNextReminderTimes(from, count) {
-  const reminderDays = [2, 4]; // Tue, Thu
+function getNextReminderTimes(from, count, days, hour, minute) {
   const times = [];
   const d = new Date(from);
-  d.setHours(12, 0, 0, 0);
+  d.setHours(hour, minute, 0, 0);
   if (d <= from) d.setDate(d.getDate() + 1);
   let safety = 0;
   while (times.length < count && safety < 30) {
-    if (reminderDays.includes(d.getDay())) times.push(new Date(d));
+    if (days.includes(d.getDay())) times.push(new Date(d));
     d.setDate(d.getDate() + 1);
     safety++;
   }
