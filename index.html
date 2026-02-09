@@ -1461,6 +1461,11 @@
     </style>
 </head>
 <body>
+        <!-- Reminder Settings Button -->
+        <button class="lang-btn" onclick="openReminderSettings()" style="right:auto;left:24px;">
+            <span style="font-size:14px;">⚙️</span>
+        </button>
+
         <!-- Language Switcher -->
         <button class="lang-btn" onclick="toggleLanguage()">
             <span class="globe-icon">🌐</span>
@@ -1549,8 +1554,7 @@
         <div class="container welcome-container">
         <!-- Welcome Page -->
         <div id="welcome-page" class="page">
-            <div class="header" style="position:relative;">
-                <button onclick="openReminderSettings()" style="position:absolute;right:0;top:0;background:none;border:none;font-size:22px;cursor:pointer;padding:8px;color:#999;">⚙️</button>
+            <div class="header">
                 <h1>Articulator</h1>
                 <p>Structure your thoughts. Speak it. Write it.</p>
             </div>
